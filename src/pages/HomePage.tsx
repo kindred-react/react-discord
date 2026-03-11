@@ -28,6 +28,7 @@ export function HomePage() {
   const [showMembers, setShowMembers] = useState(true)
   const [showAddChannelModal, setShowAddChannelModal] = useState(false)
   const [showDownloadModal, setShowDownloadModal] = useState(false)
+  const [showAddServerModal, setShowAddServerModal] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -98,7 +99,7 @@ export function HomePage() {
               />
               <div
                 onClick={() => setCurrentServer(server as Server)}
-                className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-medium cursor-pointer hover:rounded-[16px] transition-all ${
+                className={`relative w-12 h-12 rounded-full flex items-center justify-center text-white font-medium cursor-pointer hover:rounded-[16px] transition-all ${
                   currentServer?.id === server.id ? 'rounded-[16px]' : ''
                 }`}
                 style={{ 
@@ -109,7 +110,7 @@ export function HomePage() {
               >
                 <span className="text-2xl">{server.icon}</span>
                 {server.unread && server.unread > 0 && (
-                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-[#f23f43] rounded-full flex items-center justify-center text-white text-xs font-bold">
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#f23f43] rounded-full flex items-center justify-center text-white text-xs font-bold">
                     {server.unread}
                   </div>
                 )}
@@ -124,19 +125,31 @@ export function HomePage() {
 
           {/* Add Server */}
           <div className="flex items-center justify-center py-1">
-            <div className="w-12 h-12 bg-[#36393f] rounded-full flex items-center justify-center text-[#23a559] cursor-pointer hover:rounded-[16px] hover:bg-[#23a559] hover:text-white transition-all">
+            <div 
+              onClick={() => setShowAddServerModal(true)}
+              className="w-12 h-12 bg-[#36393f] rounded-full flex items-center justify-center text-[#23a559] cursor-pointer hover:rounded-[16px] hover:bg-[#23a559] hover:text-white transition-all"
+            >
               <Plus size={20} />
             </div>
           </div>
-        </div>
 
-        {/* Download App (Bottom) */}
-        <div className="w-full px-2 py-1">
-          <div 
-            onClick={() => setShowDownloadModal(true)}
-            className="w-full h-10 bg-[#36393f] rounded-[24px] flex items-center justify-center text-[#8e9297] cursor-pointer hover:rounded-[16px] hover:bg-[#40444b] hover:text-white transition-all"
-          >
-            <Download size={20} />
+          {/* Discover */}
+          <div className="flex items-center justify-center py-1">
+            <div 
+              className="w-12 h-12 bg-[#36393f] rounded-full flex items-center justify-center text-[#8e9297] cursor-pointer hover:rounded-[16px] hover:bg-[#5865f2] hover:text-white transition-all"
+            >
+              <Compass size={20} />
+            </div>
+          </div>
+
+          {/* Download App */}
+          <div className="flex items-center justify-center py-1">
+            <div 
+              onClick={() => setShowDownloadModal(true)}
+              className="w-12 h-12 bg-[#36393f] rounded-full flex items-center justify-center text-[#8e9297] cursor-pointer hover:rounded-[16px] hover:bg-[#40444b] hover:text-white transition-all"
+            >
+              <Download size={20} />
+            </div>
           </div>
         </div>
       </div>
@@ -347,6 +360,32 @@ export function HomePage() {
         <AddChannelModal
           onClose={() => setShowAddChannelModal(false)}
         />
+      </Modal>
+
+      <Modal
+        isOpen={showAddServerModal}
+        onClose={() => setShowAddServerModal(false)}
+        title="创建服务器"
+      >
+        <div className="p-4">
+          <p className="text-[#b5bac1] mb-4">通过创建一个新服务器来开始你的新社区。</p>
+          <div className="space-y-3">
+            <button 
+              onClick={() => setShowAddServerModal(false)}
+              className="w-full p-3 bg-[#5865f2] hover:bg-[#4752c4] text-white rounded-lg transition-colors flex items-center gap-3"
+            >
+              <Plus size={20} />
+              <span>创建我的服务器</span>
+            </button>
+            <button 
+              onClick={() => setShowAddServerModal(false)}
+              className="w-full p-3 bg-[#4e5058] hover:bg-[#3f4147] text-white rounded-lg transition-colors flex items-center gap-3"
+            >
+              <Compass size={20} />
+              <span>加入服务器</span>
+            </button>
+          </div>
+        </div>
       </Modal>
 
       <DownloadAppModal
