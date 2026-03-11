@@ -1,27 +1,32 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Hash, Volume2, Headphones, Plus, Settings, Crown, Users, Compass, Pin, Download } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useUserStore } from '../stores/userStore'
 import { useServerStore } from '../stores/serverStore'
-import { type User as MockUser, type Server } from '../mock/data'
+import { type Server, type Channel } from '../mock/data'
 import { Modal } from '../components/Modal'
 import { AddChannelModal } from '../components/AddChannelModal'
 import { DownloadAppModal } from '../components/DownloadAppModal'
+import { VoiceChannelPanel } from '../components/VoiceChannelPanel'
+import { useSocket } from '../hooks/useSocket'
 
 export function HomePage() {
   const user = useUserStore((state) => state.user)
+  const token = useUserStore((state) => state.token)
   const logout = useUserStore((state) => state.logout)
   const navigate = useNavigate()
   
   const { 
+    servers,
     currentServer, 
     channels, 
     currentChannel, 
     messages, 
     members,
+    fetchGuilds,
+    fetchChannels,
     setCurrentServer,
-    setCurrentChannel,
-    addMessage 
+    setCurrentChannel
   } = useServerStore()
   
   const [messageInput, setMessageInput] = useState('')
@@ -29,6 +34,26 @@ export function HomePage() {
   const [showAddChannelModal, setShowAddChannelModal] = useState(false)
   const [showDownloadModal, setShowDownloadModal] = useState(false)
   const [showAddServerModal, setShowAddServerModal] = useState(false)
+  const [activeVoiceChannel, setActiveVoiceChannel] = useState<Channel | null>(null)
+
+  const { connect, disconnect, sendMessage: sendSocketMessage } = useSocket()
+
+  useEffect(() => {
+    if (user?.id && token) {
+      fetchGuilds(token)
+      connect()
+    }
+    return () => {
+      disconnect()
+    }
+  }, [user?.id, token])
+
+  const handleServerClick = (server: Server) => {
+    setCurrentServer(server)
+    if (token) {
+      fetchChannels(server.id, token)
+    }
+  }
 
   const handleLogout = () => {
     logout()
@@ -37,15 +62,7 @@ export function HomePage() {
 
   const handleSendMessage = () => {
     if (messageInput.trim() && user) {
-      const author: MockUser = {
-        id: user.id,
-        username: user.username,
-        avatar: user.avatar,
-        discriminator: user.discriminator,
-        status: 'online',
-        role: 'member'
-      }
-      addMessage(messageInput, author)
+      sendSocketMessage(messageInput)
       setMessageInput('')
     }
   }
@@ -61,20 +78,7 @@ export function HomePage() {
   const voiceChannels = channels.filter(c => c.type === 'voice')
   const onlineMembers = members.filter(m => m.status === 'online')
 
-  interface ServerWithUnread extends Server {
-    unread?: number
-  }
-
-  const realServers: ServerWithUnread[] = [
-    { id: '1', name: 'Personal', icon: '🐼', color: '#5865f2', unread: 2 },
-    { id: '2', name: 'Gaming', icon: '🎮', color: '#57F287' },
-    { id: '3', name: 'Music', icon: '🎵', color: '#FEE75C' },
-    { id: '4', name: 'Coding', icon: '💻', color: '#EB459E' },
-    { id: '5', name: 'Anime', icon: '⚔️', color: '#FF6B6B' },
-    { id: '6', name: 'Movies', icon: '🎬', color: '#7289DA' },
-    { id: '7', name: 'Art', icon: '🎨', color: '#9C27B0' },
-    { id: '8', name: 'Tech', icon: '⚙️', color: '#4CAF50' },
-  ]
+  const displayServers = servers.length > 0 ? servers : []
 
   return (
     <div className="flex h-screen bg-[#313338]">
@@ -87,7 +91,7 @@ export function HomePage() {
 
         {/* Server List */}
         <div className="flex-1 w-full overflow-y-auto py-1">
-          {realServers.map((server) => (
+          {displayServers.map((server) => (
             <div 
               key={server.id} 
               className="flex items-center justify-center py-1 relative group"
@@ -98,7 +102,7 @@ export function HomePage() {
                 }`}
               />
               <div
-                onClick={() => setCurrentServer(server as Server)}
+                onClick={() => handleServerClick(server)}
                 className={`relative w-12 h-12 rounded-full flex items-center justify-center text-white font-medium cursor-pointer hover:rounded-[16px] transition-all ${
                   currentServer?.id === server.id ? 'rounded-[16px]' : ''
                 }`}
@@ -108,12 +112,7 @@ export function HomePage() {
                 }}
                 title={server.name}
               >
-                <span className="text-2xl">{server.icon}</span>
-                {server.unread && server.unread > 0 && (
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#f23f43] rounded-full flex items-center justify-center text-white text-xs font-bold">
-                    {server.unread}
-                  </div>
-                )}
+                <span className="text-2xl">{server.icon || '📁'}</span>
               </div>
             </div>
           ))}
@@ -199,6 +198,7 @@ export function HomePage() {
             {voiceChannels.map((channel) => (
               <div
                 key={channel.id}
+                onClick={() => setActiveVoiceChannel(channel)}
                 className="flex items-center gap-2 px-2 py-1.5 mx-1 rounded hover:bg-[#36393f] cursor-pointer group"
               >
                 <Volume2 size={20} className="text-[#6b7280]" />
@@ -228,6 +228,15 @@ export function HomePage() {
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0">
+        {activeVoiceChannel && currentServer && (
+          <VoiceChannelPanel
+            channelId={activeVoiceChannel.id}
+            channelName={activeVoiceChannel.name}
+            guildId={currentServer.id}
+            onLeave={() => setActiveVoiceChannel(null)}
+          />
+        )}
+
         <div className="h-12 px-4 flex items-center gap-2 border-b border-[#202225] shadow-sm bg-[#36393f]">
           {currentChannel?.type === 'text' ? (
             <Hash size={24} className="text-[#8e9297]" />

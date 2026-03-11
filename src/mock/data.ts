@@ -32,45 +32,45 @@ export interface Message {
 }
 
 export const mockServers: Server[] = [
-  { id: '1', name: 'Kindred', icon: 'K', color: '#5865f2', banner: 'https://images.unsplash.com/photo-1614680376593-902f74cf0d41?w=400' },
-  { id: '2', name: 'Gaming', icon: '🎮', color: '#57F287' },
-  { id: '3', name: 'Music', icon: '🎵', color: '#FEE75C' },
-  { id: '4', name: 'Coding', icon: '💻', color: '#EB459E' },
-  { id: '5', name: 'Anime', icon: '⚔️', color: '#FF6B6B' },
+  { id: '550e8400-e29b-41d4-a716-446655440000', name: 'Kindred', icon: 'K', color: '#5865f2', banner: 'https://images.unsplash.com/photo-1614680376593-902f74cf0d41?w=400' },
+  { id: '550e8400-e29b-41d4-a716-446655440001', name: 'Gaming', icon: '🎮', color: '#57F287' },
+  { id: '550e8400-e29b-41d4-a716-446655440002', name: 'Music', icon: '🎵', color: '#FEE75C' },
+  { id: '550e8400-e29b-41d4-a716-446655440003', name: 'Coding', icon: '💻', color: '#EB459E' },
+  { id: '550e8400-e29b-41d4-a716-446655440004', name: 'Anime', icon: '⚔️', color: '#FF6B6B' },
 ]
 
 export const mockChannels: Channel[] = [
-  { id: '1', name: '欢迎', type: 'text' },
-  { id: '2', name: '规则', type: 'text' },
-  { id: '3', name: '公告', type: 'text' },
-  { id: '4', name: '综合', type: 'text' },
-  { id: '5', name: '语音聊天', type: 'voice' },
-  { id: '6', name: '音乐', type: 'voice' },
+  { id: '6ba7b810-9dad-11d1-80b4-00c04fd430c1', name: '欢迎', type: 'text' },
+  { id: '6ba7b810-9dad-11d1-80b4-00c04fd430c2', name: '规则', type: 'text' },
+  { id: '6ba7b810-9dad-11d1-80b4-00c04fd430c3', name: '公告', type: 'text' },
+  { id: '6ba7b810-9dad-11d1-80b4-00c04fd430c4', name: '综合', type: 'text' },
+  { id: '6ba7b810-9dad-11d1-80b4-00c04fd430c5', name: '语音聊天', type: 'voice' },
+  { id: '6ba7b810-9dad-11d1-80b4-00c04fd430c6', name: '音乐', type: 'voice' },
 ]
 
 export const mockUsers: User[] = [
-  { id: '1', username: 'Kindred', avatar: '', discriminator: '0001', status: 'online', role: 'admin' },
-  { id: '2', username: 'Alice', avatar: '', discriminator: '1234', status: 'online' },
-  { id: '3', username: 'Bob', avatar: '', discriminator: '5678', status: 'idle' },
-  { id: '4', username: 'Charlie', avatar: '', discriminator: '9012', status: 'dnd' },
-  { id: '5', username: 'Dave', avatar: '', discriminator: '3456', status: 'offline' },
+  { id: '8d5a16d0-4bd5-4d74-b235-98585e05452d', username: 'Kindred', avatar: '', discriminator: '0001', status: 'online', role: 'admin' },
+  { id: '8d5a16d0-4bd5-4d74-b235-98585e05452e', username: 'Alice', avatar: '', discriminator: '1234', status: 'online' },
+  { id: '8d5a16d0-4bd5-4d74-b235-98585e05452f', username: 'Bob', avatar: '', discriminator: '5678', status: 'idle' },
+  { id: '8d5a16d0-4bd5-4d74-b235-98585e054530', username: 'Charlie', avatar: '', discriminator: '9012', status: 'dnd' },
+  { id: '8d5a16d0-4bd5-4d74-b235-98585e054531', username: 'Dave', avatar: '', discriminator: '3456', status: 'offline' },
 ]
 
 export const mockMessages: Message[] = [
   {
-    id: '1',
+    id: 'f792950d1-62fd-4fff-a26d-3bdfa74c7be0',
     content: '你好！欢迎来到 Discord 克隆项目 🎉',
     author: mockUsers[0],
     timestamp: new Date(Date.now() - 3600000).toISOString(),
   },
   {
-    id: '2',
+    id: 'f792950d1-62fd-4fff-a26d-3bdfa74c7be1',
     content: '这里可以聊天、分享文件、语音通话！',
     author: mockUsers[1],
     timestamp: new Date(Date.now() - 1800000).toISOString(),
   },
   {
-    id: '3',
+    id: 'f792950d1-62fd-4fff-a26d-3bdfa74c7be2',
     content: '太棒了！期待更多功能',
     author: mockUsers[2],
     timestamp: new Date(Date.now() - 900000).toISOString(),
@@ -78,7 +78,7 @@ export const mockMessages: Message[] = [
 ]
 
 export const mockDMs = [
-  { id: '1', username: 'Alice', avatar: '', lastMessage: '晚上一起玩游戏吗？', unread: 2 },
-  { id: '2', username: 'Bob', avatar: '', lastMessage: '好的', unread: 0 },
-  { id: '3', username: 'Charlie', avatar: '', lastMessage: '收到！', unread: 5 },
+  { id: '8d5a16d0-4bd5-4d74-b235-98585e05452e', username: 'Alice', avatar: '', lastMessage: '晚上一起玩游戏吗？', unread: 2 },
+  { id: '8d5a16d0-4bd5-4d74-b235-98585e05452f', username: 'Bob', avatar: '', lastMessage: '好的', unread: 0 },
+  { id: '8d5a16d0-4bd5-4d74-b235-98585e054530', username: 'Charlie', avatar: '', lastMessage: '收到！', unread: 5 },
 ]
