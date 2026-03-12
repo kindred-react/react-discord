@@ -22,3 +22,31 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Tauri
+src-tauri/target
+src-tauri/*.lock
+src-tauri/.cargo
+src-tauri/dist
+src-tauri/src-gen
+
+# Rust
+Cargo.lock
+*.rs.bk
+
+# Build outputs
+*.app
+*.dmg
+*.ipa
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Test
+coverage
+
+# Temporary
+*.temp
+*.tmp

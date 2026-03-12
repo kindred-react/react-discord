@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { useUserStore } from './stores/userStore'
+import { useUserStore } from './shared/stores/userStore'
 import { LoginPage } from './pages/LoginPage'
 import { HomePage } from './pages/HomePage'
 

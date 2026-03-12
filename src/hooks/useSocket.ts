@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react'
 import { wsService } from '../services/socketService'
-import { useServerStore } from '../stores/serverStore'
-import { useUserStore } from '../stores/userStore'
+import { useServerStore } from '../shared/stores/serverStore'
+import { useUserStore } from '../shared/stores/userStore'
 import type { Message, User } from '../mock/data'
 
 export function useSocket() {
@@ -20,7 +20,7 @@ export function useSocket() {
     userIdRef.current = user.id
     
     wsService.connect('/ws', user.id)
-  }, [user?.id])
+  }, [user])
 
   const disconnect = useCallback(() => {
     wsService.disconnect()
@@ -49,7 +49,7 @@ export function useSocket() {
       const msg = data as Message
       if (msg && msg.content) {
         if (msg.author?.id !== user?.id) {
-          addMessage(msg.content, msg.author, msg.id)
+          addMessage(msg.content, msg.author)
         }
       }
     }

@@ -1,12 +1,5 @@
 import { create } from 'zustand'
-import { v4 as uuidv4 } from 'uuid'
-
-export interface User {
-  id: string
-  username: string
-  avatar: string
-  discriminator: string
-}
+import type { User, AuthResponse } from '../types'
 
 interface UserState {
   user: User | null
@@ -14,6 +7,8 @@ interface UserState {
   isAuthenticated: boolean
   login: (username?: string, password?: string) => Promise<boolean>
   logout: () => void
+  setUser: (user: User) => void
+  setToken: (token: string) => void
 }
 
 const DEMO_USERS = [
@@ -30,6 +25,7 @@ export const useUserStore = create<UserState>()((set) => ({
   isAuthenticated: false,
 
   login: async (username?: string, _password?: string) => {
+    void _password
     let selectedUser: { username: string; password: string; email: string }
 
     if (username) {
@@ -51,7 +47,7 @@ export const useUserStore = create<UserState>()((set) => ({
       })
 
       if (response.ok) {
-        const data = await response.json()
+        const data: AuthResponse = await response.json()
         set({
           isAuthenticated: true,
           user: {
@@ -65,39 +61,20 @@ export const useUserStore = create<UserState>()((set) => ({
         return true
       } else {
         console.error('Login failed:', await response.text())
-        const existingUser = {
-          id: uuidv4(),
-          username: selectedUser.username,
-          avatar: '',
-          discriminator: '0001',
-        }
-        set({
-          isAuthenticated: true,
-          user: existingUser,
-          token: null,
-        })
-        return true
+        return false
       }
     } catch (error) {
       console.error('Login error:', error)
-      const existingUser = {
-        id: uuidv4(),
-        username: selectedUser.username,
-        avatar: '',
-        discriminator: '0001',
-      }
-      set({
-        isAuthenticated: true,
-        user: existingUser,
-        token: null,
-      })
-      return true
+      return false
     }
   },
 
   logout: () => {
     set({ user: null, token: null, isAuthenticated: false })
   },
+
+  setUser: (user) => set({ user }),
+  setToken: (token) => set({ token }),
 }))
 
 export { DEMO_USERS }

@@ -10,7 +10,7 @@ import {
   Minimize2
 } from 'lucide-react'
 import { useWebRTC } from '../hooks/useWebRTC'
-import { useUserStore } from '../stores/userStore'
+import { useUserStore } from '../shared/stores/userStore'
 import { wsService } from '../services/socketService'
 import type { User } from '../mock/data'
 

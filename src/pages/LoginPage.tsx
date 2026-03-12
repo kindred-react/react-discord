@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useUserStore, DEMO_USERS } from '../stores/userStore'
+import { useUserStore, DEMO_USERS } from '../shared/stores/userStore'
 
 export function LoginPage() {
   const login = useUserStore((state) => state.login)
