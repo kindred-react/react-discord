@@ -5,12 +5,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:select": "node scripts/dev-select.js",
     "build": "tsc -b && vite build",
+    "build:select": "node scripts/build-select.js",
     "lint": "eslint .",
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "tauri:ios": "tauri build --target aarch64-apple-ios",
+    "tauri:android": "tauri build --target aarch64-android",
+    "tauri:android:apk": "tauri build --target aarch64-android --bundles apk"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -40,6 +45,7 @@
     "@eslint/js": "^9.39.1",
     "@tailwindcss/vite": "^4.2.1",
     "@tauri-apps/cli": "^2.5.0",
+    "@types/inquirer": "^9.0.9",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
@@ -49,6 +55,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "inquirer": "^13.3.0",
     "tailwindcss": "^4.2.1",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",

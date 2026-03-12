@@ -29,6 +29,9 @@ src-tauri/*.lock
 src-tauri/.cargo
 src-tauri/dist
 src-tauri/src-gen
+src-tauri/gen/apple
+src-tauri/gen/ios
+src-tauri/gen/android
 
 # Rust
 Cargo.lock
@@ -38,6 +41,8 @@ Cargo.lock
 *.app
 *.dmg
 *.ipa
+*.apk
+*.aab
 
 # Environment
 .env
