@@ -26,9 +26,21 @@ export interface User {
 export interface Message {
   id: string
   content: string
+  type?: 'text' | 'image' | 'file' | 'voice' | 'gif' | 'sticker' | 'call_record' | 'gift'
+  voice_url?: string
+  duration?: number
   author: User
   timestamp: string
-  attachments?: string[]
+  attachments?: Array<{
+    id: string
+    filename: string
+    url: string
+    proxy_url?: string
+    size: number
+    content_type: string
+    width?: number
+    height?: number
+  }>
   embeds?: Record<string, unknown>[]
 }
 

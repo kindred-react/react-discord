@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import type { User } from '../mock/data'
+import type { User } from '../shared/types'
 
 export interface Participant {
   user: User
@@ -9,12 +9,6 @@ export interface Participant {
   isSpeaking: boolean
 }
 
-interface UseWebRTCOptions {
-  serverUrl?: string
-  onParticipantJoined?: (participant: Participant) => void
-  onParticipantLeft?: (userId: string) => void
-}
-
 interface UseWebRTCReturn {
   localStream: MediaStream | null
   participants: Map<string, Participant>
@@ -22,7 +16,8 @@ interface UseWebRTCReturn {
   isMuted: boolean
   isVideoOff: boolean
   isScreenSharing: boolean
-  error: string | null
+  webRTCError: string | null
+  initializeMedia: (enableAudio: boolean, enableVideo: boolean) => Promise<void>
   joinChannel: (channelId: string, user: User) => Promise<void>
   leaveChannel: () => void
   toggleMute: () => void
@@ -30,40 +25,55 @@ interface UseWebRTCReturn {
   toggleScreenShare: () => Promise<void>
 }
 
-export function useWebRTC(_options: UseWebRTCOptions = {}): UseWebRTCReturn {
+export function useWebRTC(): UseWebRTCReturn {
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
   const [participants, setParticipants] = useState<Map<string, Participant>>(new Map())
   const [isInCall, setIsInCall] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [isVideoOff, setIsVideoOff] = useState(false)
   const [isScreenSharing, setIsScreenSharing] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [webRTCError, setWebRTCError] = useState<string | null>(null)
 
   const currentChannelId = useRef<string | null>(null)
   const currentUser = useRef<User | null>(null)
   const screenStream = useRef<MediaStream | null>(null)
   const _peerConnections = useRef<Map<string, RTCPeerConnection>>(new Map())
 
-  const joinChannel = useCallback(async (channelId: string, user: User) => {
+  const initializeMedia = useCallback(async (enableAudio: boolean, enableVideo: boolean) => {
     try {
-      setError(null)
-      currentChannelId.current = channelId
-      currentUser.current = user
+      setWebRTCError(null)
+      
+      if (!enableAudio && !enableVideo) {
+        setLocalStream(null)
+        return
+      }
 
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: true,
+        audio: enableAudio,
+        video: enableVideo,
       })
 
       setLocalStream(stream)
-      setIsInCall(true)
-      setIsMuted(false)
-      setIsVideoOff(false)
+      setIsMuted(!enableAudio)
+      setIsVideoOff(!enableVideo)
+      console.log('Media initialized - Audio:', enableAudio, 'Video:', enableVideo)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to initialize media'
+      setWebRTCError(errorMessage)
+      console.error('Error initializing media:', err)
+    }
+  }, [])
 
+  const joinChannel = useCallback(async (channelId: string, user: User) => {
+    try {
+      setWebRTCError(null)
+      currentChannelId.current = channelId
+      currentUser.current = user
+      setIsInCall(true)
       console.log('Joined voice channel:', channelId, 'as', user.username)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to join voice channel'
-      setError(errorMessage)
+      setWebRTCError(errorMessage)
       console.error('Error joining channel:', err)
     }
   }, [])
@@ -89,7 +99,7 @@ export function useWebRTC(_options: UseWebRTCOptions = {}): UseWebRTCReturn {
     setIsScreenSharing(false)
     currentChannelId.current = null
     currentUser.current = null
-  }, [localStream])
+  }, [])
 
   const toggleMute = useCallback(() => {
     if (localStream) {
@@ -141,7 +151,7 @@ export function useWebRTC(_options: UseWebRTCOptions = {}): UseWebRTCReturn {
     return () => {
       leaveChannel()
     }
-  }, [])
+  }, [leaveChannel])
 
   return {
     localStream,
@@ -150,7 +160,8 @@ export function useWebRTC(_options: UseWebRTCOptions = {}): UseWebRTCReturn {
     isMuted,
     isVideoOff,
     isScreenSharing,
-    error,
+    webRTCError,
+    initializeMedia,
     joinChannel,
     leaveChannel,
     toggleMute,

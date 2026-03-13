@@ -17,12 +17,17 @@ interface ServerState {
   members: User[]
   voiceChannel: VoiceChannelState
   isLoading: boolean
+  isLoadingMore: boolean
+  hasMoreMessages: boolean
+  messageOffset: number
   error: string | null
   fetchGuilds: (token: string) => Promise<void>
   fetchChannels: (guildId: string, token: string) => Promise<void>
   fetchMessages: (channelId: string, token: string) => Promise<void>
+  loadMoreMessages: (channelId: string, token: string) => Promise<void>
   setCurrentServer: (server: Server) => void
   setCurrentChannel: (channel: Channel) => void
+  setMessages: (messages: Message[]) => void
   addMessage: (content: string, author: User) => void
   addReceivedMessage: (message: Message) => void
   updateMessage: (messageId: string, content: string) => void
@@ -73,6 +78,9 @@ export const useServerStore = create<ServerState>((set, get) => ({
     participants: [],
   },
   isLoading: false,
+  isLoadingMore: false,
+  hasMoreMessages: true,
+  messageOffset: 0,
   error: null,
 
   fetchGuilds: async (token: string) => {
@@ -140,18 +148,25 @@ export const useServerStore = create<ServerState>((set, get) => ({
   },
 
   fetchMessages: async (channelId: string, token: string) => {
-    set({ isLoading: true, error: null })
+    set({ isLoading: true, error: null, messageOffset: 0, hasMoreMessages: true })
     try {
-      const response = await fetch(`${API_BASE}/channels/${channelId}/messages`, {
+      const response = await fetch(`${API_BASE}/channels/${channelId}/messages?limit=10&offset=0`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       })
       if (response.ok) {
-        const backendMessages = await response.json()
+        const data = await response.json()
+        const backendMessages = data.messages || data
+        const total = data.total || 0
+        
         const messages: Message[] = (backendMessages as any[]).map((msg: any) => ({
           id: msg.id,
           content: msg.content,
+          type: msg.type || 'text',
+          voice_url: msg.voice_url,
+          duration: msg.duration,
+          attachments: msg.attachments || [],
           author: msg.author ? {
             id: msg.author.id,
             username: msg.author.username,
@@ -160,7 +175,14 @@ export const useServerStore = create<ServerState>((set, get) => ({
           } : { id: 'unknown', username: 'Unknown', avatar: '', discriminator: '0000' },
           timestamp: msg.created_at || msg.timestamp || new Date().toISOString(),
         }))
-        set({ messages, isLoading: false })
+        // 反转消息顺序，最新的在最下面
+        messages.reverse()
+        set({ 
+          messages, 
+          messageOffset: messages.length,
+          hasMoreMessages: total > messages.length,
+          isLoading: false 
+        })
       } else {
         set({ isLoading: false, error: 'Failed to fetch messages' })
       }
@@ -168,13 +190,65 @@ export const useServerStore = create<ServerState>((set, get) => ({
       set({ isLoading: false, error: 'Network error' })
     }
   },
+
+  loadMoreMessages: async (channelId: string, token: string) => {
+    const { messageOffset, isLoadingMore } = get()
+    if (isLoadingMore) return
+    
+    set({ isLoadingMore: true, error: null })
+    try {
+      const response = await fetch(`${API_BASE}/channels/${channelId}/messages?limit=20&offset=${messageOffset}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
+      if (response.ok) {
+        const data = await response.json()
+        const backendMessages = data.messages || data
+        const total = data.total || 0
+        
+        const newMessages: Message[] = (backendMessages as any[]).map((msg: any) => ({
+          id: msg.id,
+          content: msg.content,
+          type: msg.type || 'text',
+          voice_url: msg.voice_url,
+          duration: msg.duration,
+          attachments: msg.attachments || [],
+          author: msg.author ? {
+            id: msg.author.id,
+            username: msg.author.username,
+            avatar: msg.author.avatar || '',
+            discriminator: msg.author.discriminator || '0001',
+          } : { id: 'unknown', username: 'Unknown', avatar: '', discriminator: '0000' },
+          timestamp: msg.created_at || msg.timestamp || new Date().toISOString(),
+        }))
+        // 反转消息顺序
+        newMessages.reverse()
+        
+        set((state) => ({ 
+          messages: [...newMessages, ...state.messages],
+          messageOffset: state.messageOffset + newMessages.length,
+          hasMoreMessages: (state.messageOffset + newMessages.length) < total,
+          isLoadingMore: false 
+        }))
+      } else {
+        set({ isLoadingMore: false, error: 'Failed to load more messages' })
+      }
+    } catch {
+      set({ isLoadingMore: false, error: 'Network error' })
+    }
+  },
   
   setCurrentServer: (server) => {
-    set({ currentServer: server })
+    set({ currentServer: server, channels: [], currentChannel: null, messages: [] })
   },
   
   setCurrentChannel: (channel) => {
-    set({ currentChannel: channel })
+    set({ currentChannel: channel, messages: [], messageOffset: 0, hasMoreMessages: true })
+  },
+
+  setMessages: (messages) => {
+    set({ messages })
   },
   
   addMessage: (content: string, author: User) => {

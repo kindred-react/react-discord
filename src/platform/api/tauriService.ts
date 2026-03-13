@@ -42,7 +42,7 @@ class TauriService {
       const result = await window.__TAURI__?.core.invoke<string>('init_app')
       this.initialized = true
       console.log('[Tauri] Service initialized:', result)
-    } catch (error) {
+    } catch {
       console.log('[Tauri] Running in browser mode')
     }
   }

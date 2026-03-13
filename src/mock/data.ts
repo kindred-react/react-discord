@@ -11,6 +11,7 @@ export interface Channel {
   name: string
   type: 'text' | 'voice' | 'category'
   parentId?: string
+  guildId?: string
 }
 
 export interface User {
@@ -28,7 +29,31 @@ export interface Message {
   author: User
   timestamp: string
   attachments?: string[]
-  embeds?: any[]
+  embeds?: Embed[]
+}
+
+export interface Embed {
+  title?: string
+  description?: string
+  url?: string
+  color?: number
+  image?: string
+  thumbnail?: string
+  author?: {
+    name: string
+    url?: string
+    icon_url?: string
+  }
+  fields?: Array<{
+    name: string
+    value: string
+    inline?: boolean
+  }>
+  footer?: {
+    text: string
+    icon_url?: string
+  }
+  timestamp?: string
 }
 
 export const mockServers: Server[] = [

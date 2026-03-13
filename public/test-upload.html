@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>文件上传测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 3px;
+        }
+        input {
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Discord 文件上传功能测试</h1>
+    
+    <div class="test-section">
+        <h2>1. 登录获取 Token</h2>
+        <input type="text" id="username" placeholder="用户名" value="甲">
+        <input type="password" id="password" placeholder="密码" value="password123">
+        <button onclick="login()">登录</button>
+        <div class="result" id="loginResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. 上传图片</h2>
+        <input type="text" id="channelId" placeholder="频道 ID" value="aaaaaaaa-aaaa-aaaa-aaaa-111111111111">
+        <input type="file" id="imageFile" accept="image/*">
+        <button onclick="uploadImage()">上传图片</button>
+        <div class="result" id="imageResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. 上传文件</h2>
+        <input type="file" id="file">
+        <button onclick="uploadFile()">上传文件</button>
+        <div class="result" id="fileResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>4. 发送 GIF</h2>
+        <input type="text" id="gifUrl" placeholder="GIF URL" value="https://media.giphy.com/media/3o7abKhOpu0NwenH3O/giphy.gif">
+        <button onclick="sendGif()">发送 GIF</button>
+        <div class="result" id="gifResult"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>5. 发送贴纸</h2>
+        <input type="text" id="sticker" placeholder="贴纸" value="🎉">
+        <button onclick="sendSticker()">发送贴纸</button>
+        <div class="result" id="stickerResult"></div>
+    </div>
+
+    <script>
+        let token = '';
+        const API_BASE = 'http://localhost:8080';
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const resultDiv = document.getElementById('loginResult');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password }),
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    token = data.token;
+                    resultDiv.innerHTML = `<strong>登录成功!</strong><br>Token: ${token.substring(0, 20)}...`;
+                    resultDiv.style.background = '#d4edda';
+                } else {
+                    resultDiv.innerHTML = `<strong>登录失败:</strong> ${JSON.stringify(data)}`;
+                    resultDiv.style.background = '#f8d7da';
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<strong>错误:</strong> ${err.message}`;
+                resultDiv.style.background = '#f8d7da';
+            }
+        }
+
+        async function uploadImage() {
+            if (!token) {
+                alert('请先登录');
+                return;
+            }
+
+            const channelId = document.getElementById('channelId').value;
+            const fileInput = document.getElementById('imageFile');
+            const file = fileInput.files[0];
+            const resultDiv = document.getElementById('imageResult');
+
+            if (!file) {
+                alert('请选择图片');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', file);
+            formData.append('channel_id', channelId);
+
+            try {
+                resultDiv.innerHTML = '上传中...';
+                
+                const response = await fetch(`${API_BASE}/api/files/image`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: formData,
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<strong>上传成功!</strong><br>${JSON.stringify(data, null, 2)}`;
+                    resultDiv.style.background = '#d4edda';
+                } else {
+                    resultDiv.innerHTML = `<strong>上传失败:</strong> ${JSON.stringify(data)}`;
+                    resultDiv.style.background = '#f8d7da';
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<strong>错误:</strong> ${err.message}`;
+                resultDiv.style.background = '#f8d7da';
+            }
+        }
+
+        async function uploadFile() {
+            if (!token) {
+                alert('请先登录');
+                return;
+            }
+
+            const channelId = document.getElementById('channelId').value;
+            const fileInput = document.getElementById('file');
+            const file = fileInput.files[0];
+            const resultDiv = document.getElementById('fileResult');
+
+            if (!file) {
+                alert('请选择文件');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('channel_id', channelId);
+
+            try {
+                resultDiv.innerHTML = '上传中...';
+                
+                const response = await fetch(`${API_BASE}/api/files/upload`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: formData,
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<strong>上传成功!</strong><br>${JSON.stringify(data, null, 2)}`;
+                    resultDiv.style.background = '#d4edda';
+                } else {
+                    resultDiv.innerHTML = `<strong>上传失败:</strong> ${JSON.stringify(data)}`;
+                    resultDiv.style.background = '#f8d7da';
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<strong>错误:</strong> ${err.message}`;
+                resultDiv.style.background = '#f8d7da';
+            }
+        }
+
+        async function sendGif() {
+            if (!token) {
+                alert('请先登录');
+                return;
+            }
+
+            const channelId = document.getElementById('channelId').value;
+            const gifUrl = document.getElementById('gifUrl').value;
+            const resultDiv = document.getElementById('gifResult');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/files/gif`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        channel_id: channelId,
+                        gif_url: gifUrl,
+                        title: 'Test GIF',
+                    }),
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<strong>发送成功!</strong><br>${JSON.stringify(data, null, 2)}`;
+                    resultDiv.style.background = '#d4edda';
+                } else {
+                    resultDiv.innerHTML = `<strong>发送失败:</strong> ${JSON.stringify(data)}`;
+                    resultDiv.style.background = '#f8d7da';
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<strong>错误:</strong> ${err.message}`;
+                resultDiv.style.background = '#f8d7da';
+            }
+        }
+
+        async function sendSticker() {
+            if (!token) {
+                alert('请先登录');
+                return;
+            }
+
+            const channelId = document.getElementById('channelId').value;
+            const sticker = document.getElementById('sticker').value;
+            const resultDiv = document.getElementById('stickerResult');
+
+            try {
+                const response = await fetch(`${API_BASE}/api/files/sticker`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        channel_id: channelId,
+                        sticker: sticker,
+                    }),
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<strong>发送成功!</strong><br>${JSON.stringify(data, null, 2)}`;
+                    resultDiv.style.background = '#d4edda';
+                } else {
+                    resultDiv.innerHTML = `<strong>发送失败:</strong> ${JSON.stringify(data)}`;
+                    resultDiv.style.background = '#f8d7da';
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<strong>错误:</strong> ${err.message}`;
+                resultDiv.style.background = '#f8d7da';
+            }
+        }
+    </script>
+</body>
+</html>

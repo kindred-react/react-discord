@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { View, Text, TextInput, TouchableOpacity, ScrollView, FlatList, StyleSheet, SafeAreaView, StatusBar } from 'react-native'
+import { View, Text, TouchableOpacity, ScrollView, FlatList, StyleSheet, SafeAreaView, StatusBar } from 'react-native'
 import { useUserStore, useServerStore } from '../shared/stores'
-import type { Server, Channel, Message, User } from '../shared/types'
+import type { Server, Message } from '../shared/types'
 
 export function HomeScreen() {
   const user = useUserStore((state) => state.user)

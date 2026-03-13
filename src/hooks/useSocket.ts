@@ -9,6 +9,19 @@ interface BackendMessage {
   channel_id: string
   author_id: string
   content: string
+  type?: string
+  voice_url?: string
+  duration?: number
+  attachments?: Array<{
+    id: string
+    filename: string
+    url: string
+    proxy_url?: string
+    size: number
+    content_type: string
+    width?: number
+    height?: number
+  }>
   created_at: string
   author?: {
     id: string
@@ -19,14 +32,18 @@ interface BackendMessage {
 }
 
 export function useSocket() {
-  const { addMessage, addReceivedMessage, updateMessage, removeMessage, currentChannel } = useServerStore()
+  const { addMessage, addReceivedMessage, updateMessage, removeMessage, currentChannel, setMessages, currentServer, channels } = useServerStore()
   const user = useUserStore((state) => state.user)
   const isAuthenticated = useUserStore((state) => state.isAuthenticated)
   const userIdRef = useRef<string | null>(null)
   const joinedChannelsRef = useRef<Set<string>>(new Set())
+  const currentServerRef = useRef<string | null>(null)
   const [isSocketConnected, setIsSocketConnected] = useState(false)
   const userRef = useRef(user)
-  userRef.current = user
+
+  useEffect(() => {
+    userRef.current = user
+  }, [user])
 
   const connect = useCallback(() => {
     if (!user?.id) return
@@ -44,21 +61,13 @@ export function useSocket() {
     wsService.disconnect()
     userIdRef.current = null
     joinedChannelsRef.current.clear()
-  }, [])
+  }, [wsService])
 
   const sendMessage = useCallback((content: string) => {
     if (!currentChannel || !user) return
     
     wsService.sendMessage(currentChannel.id, content)
-    
-    const author: Message['author'] = {
-      id: user.id,
-      username: user.username,
-      avatar: user.avatar,
-      discriminator: user.discriminator,
-    }
-    addMessage(content, author)
-  }, [currentChannel, user, addMessage])
+  }, [currentChannel, user])
 
   useEffect(() => {
     const handleConnectionChange = (isConnected: boolean) => {
@@ -76,7 +85,7 @@ export function useSocket() {
     return () => {
       wsService.offConnectionStatusChange(handleConnectionChange)
     }
-  }, [])
+  }, [wsService])
 
   useEffect(() => {
     if (isAuthenticated && user?.id) {
@@ -88,12 +97,25 @@ export function useSocket() {
 
   useEffect(() => {
     const handleNewMessage = (data: unknown) => {
-      const msg = data as BackendMessage
+      console.log('[useSocket] Received message:new event, data:', data)
+      const msgData = data as any
+      
+      // 后端直接发送消息对象
+      const msg = msgData as BackendMessage
+      
       if (msg && msg.content) {
-        if (msg.author?.id !== user?.id && currentChannel) {
+        console.log('[useSocket] Processing message from user:', msg.author_id, 'current user:', user?.id)
+        
+        // 所有消息都应该被添加
+        if (currentChannel && msg.channel_id === currentChannel.id) {
+          const messageType = (msg.type || 'text') as Message['type']
           const message: Message = {
             id: msg.id,
             content: msg.content,
+            type: messageType,
+            voice_url: msg.voice_url,
+            duration: msg.duration,
+            attachments: msg.attachments || [],
             author: msg.author ? {
               id: msg.author.id,
               username: msg.author.username,
@@ -102,8 +124,38 @@ export function useSocket() {
             } : { id: msg.author_id || 'unknown', username: 'Unknown', avatar: '', discriminator: '0000' },
             timestamp: msg.created_at || new Date().toISOString(),
           }
+          
+          console.log('[useSocket] Adding message to store')
           addReceivedMessage(message)
         }
+      }
+    }
+
+    const handleHistoryMessage = (data: unknown) => {
+      const historyData = data as { data: BackendMessage[]; channel_id: string; event: string }
+      console.log('[useSocket] Received history messages:', historyData)
+      
+      if (historyData && historyData.data && historyData.channel_id === currentChannel?.id) {
+        console.log('[useSocket] Received history messages for channel:', historyData.channel_id, 'count:', historyData.data.length)
+        const messages: Message[] = historyData.data.map((msg: BackendMessage): Message => {
+          const messageType = (msg.type || 'text') as Message['type']
+          return {
+            id: msg.id,
+            content: msg.content,
+            type: messageType,
+            voice_url: msg.voice_url,
+            duration: msg.duration,
+            attachments: msg.attachments || [],
+            author: msg.author ? {
+              id: msg.author.id,
+              username: msg.author.username,
+              avatar: msg.author.avatar || '',
+              discriminator: msg.author.discriminator || '0001',
+            } : { id: msg.author_id || 'unknown', username: 'Unknown', avatar: '', discriminator: '0000' },
+            timestamp: msg.created_at || new Date().toISOString(),
+          }
+        })
+        setMessages(messages)
       }
     }
 
@@ -118,13 +170,17 @@ export function useSocket() {
     }
 
     wsService.on('message:new', handleNewMessage)
+    wsService.on('message:history', handleHistoryMessage)
     wsService.on('message:edit', handleEditMessage)
     wsService.on('message:delete', handleDeleteMessage)
 
     return () => {
-      wsService.removeAllListeners()
+      wsService.off('message:new', handleNewMessage)
+      wsService.off('message:history', handleHistoryMessage)
+      wsService.off('message:edit', handleEditMessage)
+      wsService.off('message:delete', handleDeleteMessage)
     }
-  }, [addReceivedMessage, updateMessage, removeMessage, user?.id, currentChannel])
+  }, [addReceivedMessage, updateMessage, removeMessage, setMessages, user?.id, currentChannel])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -139,6 +195,31 @@ export function useSocket() {
 
     return () => clearTimeout(timer)
   }, [currentChannel])
+
+  useEffect(() => {
+    if (currentServer && wsService.isConnected()) {
+      const newServerId = currentServer.id
+      
+      if (currentServerRef.current && currentServerRef.current !== newServerId) {
+        console.log('[useSocket] Server changed, leaving all old channels')
+        joinedChannelsRef.current.forEach((channelId) => {
+          wsService.leaveChannel(channelId)
+        })
+        joinedChannelsRef.current.clear()
+        
+        setTimeout(() => {
+          const textChannels = channels.filter(c => c.type === 'text')
+          textChannels.forEach((channel) => {
+            console.log('[useSocket] Joining channel for new server:', channel.name)
+            wsService.joinChannel(channel.id)
+            joinedChannelsRef.current.add(channel.id)
+          })
+        }, 100)
+      }
+      
+      currentServerRef.current = newServerId
+    }
+  }, [currentServer, channels])
 
   return {
     connect,
