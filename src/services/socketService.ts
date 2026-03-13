@@ -7,6 +7,7 @@ type WSMessage = {
 }
 
 type MessageHandler = (data: unknown) => void
+type ConnectionStatusHandler = (isConnected: boolean) => void
 
 class WebSocketService {
   private ws: WebSocket | null = null
@@ -22,6 +23,8 @@ class WebSocketService {
   private pendingMessages: Array<{ event: string; data?: unknown }> = []
   private pingTimer: ReturnType<typeof setInterval> | null = null
   private pingInterval: number = 30000
+  private connectionStatusHandlers: Set<ConnectionStatusHandler> = new Set()
+  private lastConnectedTime: number = 0
 
   connect(url: string = '/ws', userId: string) {
     this.isManualClose = false
@@ -58,9 +61,10 @@ class WebSocketService {
         console.log('[WebSocket] Connection opened!')
         this.isConnecting = false
         this.connectionAttempts = 0
+        this.lastConnectedTime = Date.now()
         this.flushPendingMessages()
-        
         this.startPing()
+        this.notifyConnectionStatus(true)
       }
 
       this.ws.onclose = (event) => {
@@ -68,6 +72,7 @@ class WebSocketService {
         this.isConnecting = false
         this.ws = null
         this.stopPing()
+        this.notifyConnectionStatus(false)
         
         if (event.code === 1006) {
           console.warn('[WebSocket] Abnormal closure, possible network issue')
@@ -81,6 +86,7 @@ class WebSocketService {
 
       this.ws.onerror = (error) => {
         console.error('[WebSocket] Error occurred:', error)
+        this.notifyConnectionStatus(false)
       }
 
       this.ws.onmessage = (event) => {
@@ -101,6 +107,31 @@ class WebSocketService {
       this.isConnecting = false
       this.reconnect()
     }
+  }
+
+  private notifyConnectionStatus(isConnected: boolean) {
+    this.connectionStatusHandlers.forEach((handler) => {
+      handler(isConnected)
+    })
+  }
+
+  onConnectionStatusChange(handler: ConnectionStatusHandler) {
+    this.connectionStatusHandlers.add(handler)
+    handler(this.isConnected())
+  }
+
+  offConnectionStatusChange(handler: ConnectionStatusHandler) {
+    this.connectionStatusHandlers.delete(handler)
+  }
+
+  getLastConnectedTime(): number {
+    return this.lastConnectedTime
+  }
+
+  isHealthy(): boolean {
+    if (!this.isConnected()) return false
+    const timeSinceLastConnect = Date.now() - this.lastConnectedTime
+    return timeSinceLastConnect < this.pingInterval * 2
   }
 
   private flushPendingMessages() {

@@ -25,6 +25,7 @@ export function HomePage() {
     members,
     fetchGuilds,
     fetchChannels,
+    fetchMessages,
     setCurrentServer,
     setCurrentChannel
   } = useServerStore()
@@ -47,6 +48,12 @@ export function HomePage() {
       disconnect()
     }
   }, [user?.id, token])
+
+  useEffect(() => {
+    if (currentChannel && token) {
+      fetchMessages(currentChannel.id, token)
+    }
+  }, [currentChannel?.id, token])
 
   const handleServerClick = (server: Server) => {
     setCurrentServer(server)

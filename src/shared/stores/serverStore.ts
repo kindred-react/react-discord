@@ -24,6 +24,7 @@ interface ServerState {
   setCurrentServer: (server: Server) => void
   setCurrentChannel: (channel: Channel) => void
   addMessage: (content: string, author: User) => void
+  addReceivedMessage: (message: Message) => void
   updateMessage: (messageId: string, content: string) => void
   removeMessage: (messageId: string) => void
   joinVoiceChannel: (channelId: string, user: User) => void
@@ -147,8 +148,19 @@ export const useServerStore = create<ServerState>((set, get) => ({
         },
       })
       if (response.ok) {
-        const messages = await response.json()
-        set({ messages: messages as Message[], isLoading: false })
+        const backendMessages = await response.json()
+        const messages: Message[] = (backendMessages as any[]).map((msg: any) => ({
+          id: msg.id,
+          content: msg.content,
+          author: msg.author ? {
+            id: msg.author.id,
+            username: msg.author.username,
+            avatar: msg.author.avatar || '',
+            discriminator: msg.author.discriminator || '0001',
+          } : { id: 'unknown', username: 'Unknown', avatar: '', discriminator: '0000' },
+          timestamp: msg.created_at || msg.timestamp || new Date().toISOString(),
+        }))
+        set({ messages, isLoading: false })
       } else {
         set({ isLoading: false, error: 'Failed to fetch messages' })
       }
@@ -165,7 +177,7 @@ export const useServerStore = create<ServerState>((set, get) => ({
     set({ currentChannel: channel })
   },
   
-  addMessage: (content, author) => {
+  addMessage: (content: string, author: User) => {
     const newMessage: Message = {
       id: Date.now().toString(),
       content,
@@ -174,6 +186,12 @@ export const useServerStore = create<ServerState>((set, get) => ({
     }
     set((state) => ({
       messages: [...state.messages, newMessage],
+    }))
+  },
+
+  addReceivedMessage: (message: Message) => {
+    set((state) => ({
+      messages: [...state.messages, message],
     }))
   },
 
