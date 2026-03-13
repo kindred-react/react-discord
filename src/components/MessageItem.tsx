@@ -132,9 +132,9 @@ export function MessageItem({ message }: MessageItemProps) {
         const width = imageAttachment?.width || 400
         const height = imageAttachment?.height || 300
         
-        // 计算缩略图尺寸（最大400px宽度，保持比例）
-        const maxWidth = 400
-        const maxHeight = 300
+        // 计算缩略图尺寸（最大300px宽度，最大200px高度，保持比例）
+        const maxWidth = 300
+        const maxHeight = 200
         let thumbWidth = width
         let thumbHeight = height
         
@@ -238,13 +238,14 @@ export function MessageItem({ message }: MessageItemProps) {
       case 'gif':
         return (
           <div className="mt-2">
-            <div className="relative inline-block rounded-lg overflow-hidden bg-[#2b2d31]">
+            <div className="relative inline-block rounded-lg overflow-hidden bg-[#2b2d31] max-w-[200px]">
               <img
                 src={message.voice_url}
                 alt="GIF"
-                className="max-w-md max-h-96 rounded-lg"
+                className="w-full h-auto rounded-lg"
+                style={{ maxHeight: '150px', objectFit: 'contain' }}
               />
-              <div className="absolute top-2 left-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
+              <div className="absolute top-1.5 left-1.5 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
                 GIF
               </div>
             </div>
