@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Download, Play, Pause } from 'lucide-react'
 
 interface Message {
@@ -32,8 +32,10 @@ export function MessageItem({ message }: MessageItemProps) {
   const [selectedImage, setSelectedImage] = useState<string>('')
   const [isPlayingAudio, setIsPlayingAudio] = useState(false)
   const [audioProgress, setAudioProgress] = useState(0)
+  const [currentTime, setCurrentTime] = useState(0)
   const [showStickerModal, setShowStickerModal] = useState(false)
   const [selectedSticker, setSelectedSticker] = useState<string>('')
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   // ESC 键关闭模态框
   useEffect(() => {
@@ -49,6 +51,68 @@ export function MessageItem({ message }: MessageItemProps) {
       return () => window.removeEventListener('keydown', handleEscape)
     }
   }, [showImageModal, showStickerModal])
+
+  // 音频播放控制
+  useEffect(() => {
+    if (message.type === 'voice' && message.voice_url) {
+      const audio = new Audio(message.voice_url)
+      audioRef.current = audio
+
+      audio.addEventListener('timeupdate', () => {
+        const progress = (audio.currentTime / audio.duration) * 100
+        setAudioProgress(progress)
+        setCurrentTime(audio.currentTime)
+      })
+
+      audio.addEventListener('ended', () => {
+        setIsPlayingAudio(false)
+        setAudioProgress(0)
+        setCurrentTime(0)
+      })
+
+      audio.addEventListener('error', (e) => {
+        console.error('音频加载失败:', e)
+        setIsPlayingAudio(false)
+      })
+
+      return () => {
+        audio.pause()
+        audio.src = ''
+      }
+    }
+  }, [message.type, message.voice_url])
+
+  const toggleAudioPlayback = () => {
+    if (!audioRef.current) return
+
+    if (isPlayingAudio) {
+      audioRef.current.pause()
+      setIsPlayingAudio(false)
+    } else {
+      audioRef.current.play()
+      setIsPlayingAudio(true)
+    }
+  }
+
+  const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!audioRef.current) return
+
+    const rect = e.currentTarget.getBoundingClientRect()
+    const clickX = e.clientX - rect.left
+    const percentage = clickX / rect.width
+    const newTime = percentage * audioRef.current.duration
+
+    audioRef.current.currentTime = newTime
+    setAudioProgress(percentage * 100)
+    setCurrentTime(newTime)
+  }
+
+  const formatTime = (seconds: number) => {
+    if (isNaN(seconds)) return '0:00'
+    const mins = Math.floor(seconds / 60)
+    const secs = Math.floor(seconds % 60)
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
 
   const handleImageClick = (url: string) => {
     setSelectedImage(url)
@@ -142,8 +206,8 @@ export function MessageItem({ message }: MessageItemProps) {
         return (
           <div className="mt-2 bg-[#2b2d31] rounded-lg p-3 inline-flex items-center gap-3 max-w-md">
             <button
-              onClick={() => setIsPlayingAudio(!isPlayingAudio)}
-              className="w-10 h-10 bg-[#5865f2] rounded-full flex items-center justify-center hover:bg-[#4752c4] transition-colors"
+              onClick={toggleAudioPlayback}
+              className="w-10 h-10 bg-[#5865f2] rounded-full flex items-center justify-center hover:bg-[#4752c4] transition-colors flex-shrink-0"
             >
               {isPlayingAudio ? (
                 <Pause size={20} className="text-white" />
@@ -151,32 +215,23 @@ export function MessageItem({ message }: MessageItemProps) {
                 <Play size={20} className="text-white ml-0.5" />
               )}
             </button>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <span className="text-white text-sm font-medium">语音消息</span>
-                {message.duration && (
-                  <span className="text-[#949ba4] text-xs">
-                    {Math.floor(message.duration / 60)}:{(message.duration % 60).toString().padStart(2, '0')}
-                  </span>
-                )}
+                <span className="text-[#949ba4] text-xs">
+                  {formatTime(currentTime)} / {formatTime(message.duration || 0)}
+                </span>
               </div>
-              <div className="relative w-full h-1 bg-[#3f4147] rounded-full overflow-hidden">
+              <div 
+                className="relative w-full h-1 bg-[#3f4147] rounded-full overflow-hidden cursor-pointer"
+                onClick={handleProgressClick}
+              >
                 <div 
                   className="absolute left-0 top-0 h-full bg-[#5865f2] transition-all"
                   style={{ width: `${audioProgress}%` }}
                 />
               </div>
             </div>
-            {message.voice_url && (
-              <a
-                href={message.voice_url}
-                download
-                className="text-[#00a8fc] hover:text-[#0095e8] transition-colors"
-                title="下载语音"
-              >
-                <Download size={18} />
-              </a>
-            )}
           </div>
         )
 

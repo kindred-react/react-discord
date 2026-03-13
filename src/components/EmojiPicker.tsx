@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 interface EmojiPickerProps {
   onSelect: (emoji: string) => void
@@ -7,6 +7,38 @@ interface EmojiPickerProps {
 
 export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
   const [activeCategory, setActiveCategory] = useState<'smileys' | 'people' | 'nature' | 'food' | 'activities' | 'travel' | 'objects' | 'symbols'>('smileys')
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  // ESC 键关闭
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose()
+      }
+    }
+    
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [onClose])
+
+  // 点击外部关闭
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        onClose()
+      }
+    }
+    
+    // 延迟添加监听器，避免立即触发
+    const timer = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside)
+    }, 100)
+    
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [onClose])
 
   const emojiCategories = {
     smileys: {
@@ -52,7 +84,10 @@ export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
   }
 
   return (
-    <div className="absolute bottom-full right-0 mb-2 bg-[#2b2d31] rounded-lg shadow-xl w-96 max-h-[500px] overflow-hidden">
+    <div 
+      ref={containerRef}
+      className="absolute bottom-full right-0 mb-2 bg-[#2b2d31] rounded-lg shadow-xl w-96 max-h-[500px] overflow-hidden z-50"
+    >
       <div className="p-4 border-b border-[#3f4147]">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-white font-semibold">表情符号</h3>

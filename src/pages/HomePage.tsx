@@ -318,14 +318,26 @@ export function HomePage() {
   }
 
   const handleVoiceMessageSend = async (blob: Blob, duration: number) => {
-    if (!currentChannel || !token) return
+    if (!currentChannel || !token) {
+      alert('请先选择一个频道')
+      return
+    }
+
+    console.log('准备发送语音消息:', {
+      size: blob.size,
+      type: blob.type,
+      duration: duration,
+      channelId: currentChannel.id
+    })
 
     try {
       setIsUploadingVoice(true)
       const formData = new FormData()
-      formData.append('voice', blob)
+      formData.append('voice', blob, 'voice-message.webm')
       formData.append('channel_id', currentChannel.id)
       formData.append('duration', duration.toString())
+
+      console.log('发送请求到 /api/voice/message')
 
       const response = await fetch('/api/voice/message', {
         method: 'POST',
@@ -335,16 +347,23 @@ export function HomePage() {
         body: formData,
       })
 
+      console.log('响应状态:', response.status)
+
       if (response.ok) {
         const message = await response.json()
-        console.log('Voice message sent:', message)
+        console.log('语音消息发送成功:', message)
         // 刷新消息列表
         if (token) {
-          fetchMessages(currentChannel.id, token)
+          await fetchMessages(currentChannel.id, token)
         }
+      } else {
+        const errorText = await response.text()
+        console.error('语音消息发送失败:', errorText)
+        alert(`语音消息发送失败: ${errorText}`)
       }
     } catch (err) {
-      console.error('Failed to send voice message:', err)
+      console.error('语音消息发送错误:', err)
+      alert(`语音消息发送失败: ${err}`)
     } finally {
       setIsUploadingVoice(false)
     }
