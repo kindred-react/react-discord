@@ -72,12 +72,6 @@ export function useSocket() {
   useEffect(() => {
     const handleConnectionChange = (isConnected: boolean) => {
       setIsSocketConnected(isConnected)
-      if (isConnected && userRef.current?.id) {
-        if (userIdRef.current !== userRef.current.id) {
-          userIdRef.current = userRef.current.id
-          wsService.connect('/ws', userRef.current.id)
-        }
-      }
     }
 
     wsService.onConnectionStatusChange(handleConnectionChange)
@@ -85,7 +79,7 @@ export function useSocket() {
     return () => {
       wsService.offConnectionStatusChange(handleConnectionChange)
     }
-  }, [wsService])
+  }, [])
 
   useEffect(() => {
     if (isAuthenticated && user?.id) {

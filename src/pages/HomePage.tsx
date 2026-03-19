@@ -55,15 +55,11 @@ export function HomePage() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
 
-  const { connect, disconnect, sendMessage: sendSocketMessage } = useSocket()
+  const { sendMessage: sendSocketMessage } = useSocket()
 
   useEffect(() => {
     if (user?.id && token) {
       fetchGuilds(token)
-      connect()
-    }
-    return () => {
-      disconnect()
     }
   }, [user?.id, token])
 
