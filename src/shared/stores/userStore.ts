@@ -35,14 +35,23 @@ export const useUserStore = create<UserState>()(
       isVerifying: false,
 
       login: async (email?: string, password?: string) => {
-        let selectedUser: { username: string; password: string; email: string }
+        // Resolve the email and password to send to the backend.
+        // If both are explicitly provided (real login form), use them directly.
+        // Otherwise fall back to the demo user lookup.
+        let loginEmail: string
+        let loginPassword: string
 
         if (email && password) {
-          selectedUser = { username: email.split('@')[0], email, password }
+          loginEmail = email
+          loginPassword = password
         } else if (email) {
-          selectedUser = DEMO_USERS.find(u => u.username === email || u.email === email) || DEMO_USERS[0]
+          const demo = DEMO_USERS.find(u => u.username === email || u.email === email) || DEMO_USERS[0]
+          loginEmail = demo.email
+          loginPassword = demo.password
         } else {
-          selectedUser = DEMO_USERS[0]
+          const demo = DEMO_USERS[0]
+          loginEmail = demo.email
+          loginPassword = demo.password
         }
 
         try {
@@ -52,8 +61,8 @@ export const useUserStore = create<UserState>()(
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              email: selectedUser.email,
-              password: selectedUser.password,
+              email: loginEmail,
+              password: loginPassword,
             }),
           })
 
@@ -108,8 +117,16 @@ export const useUserStore = create<UserState>()(
           set({ isVerifying: false })
 
           if (response.ok) {
-            const userData: User = await response.json()
-            set({ user: userData, isAuthenticated: true })
+            const raw = await response.json()
+            set({
+              user: {
+                id: raw.id,
+                username: raw.username,
+                avatar: raw.avatar ?? '',
+                discriminator: raw.discriminator ?? '0001',
+              },
+              isAuthenticated: true,
+            })
             return true
           } else {
             console.warn('Token verification failed (401), logging out')

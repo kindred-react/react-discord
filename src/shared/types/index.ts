@@ -52,7 +52,13 @@ export interface VoiceChannelParticipant {
 }
 
 export interface AuthResponse {
-  user: User
+  user: {
+    id: string
+    username: string
+    avatar: string | null
+    discriminator: string
+    email?: string
+  }
   token: string
 }
 

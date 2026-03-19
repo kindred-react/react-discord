@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { useUserStore, DEMO_USERS } from '../shared/stores/userStore'
 
 type LoginError = '' | 'empty' | 'network' | 'server' | 'invalid'
@@ -158,7 +158,10 @@ export function LoginPage() {
         </button>
 
         <p className="text-xs text-[#949ba4] mt-4 text-center">
-          需要账号? <span className="text-[#00a8fc] hover:underline cursor-pointer">注册</span>
+          需要账号?{' '}
+          <Link to="/register" className="text-[#00a8fc] hover:underline">
+            立即注册
+          </Link>
         </p>
       </div>
     </div>
