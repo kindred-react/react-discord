@@ -4,7 +4,7 @@ import { Download, Play, Pause } from 'lucide-react'
 interface Message {
   id: string
   content: string
-  type: string
+  type?: 'text' | 'image' | 'file' | 'voice' | 'gif' | 'sticker' | 'call_record' | 'gift'
   author: {
     id: string
     username: string
@@ -303,44 +303,34 @@ export function MessageItem({ message }: MessageItemProps) {
 
   return (
     <>
-      <div className="flex gap-4 mb-4 px-4 py-0.5 hover:bg-[#2e3035] -mx-4 group">
-        <div className="w-10 h-10 bg-[#5865f2] rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 mt-0.5">
+      <div className="flex gap-4 px-4 py-0.5 hover:bg-[#2e3035] group relative">
+        {/* Avatar */}
+        <div className="w-10 h-10 bg-[#5865f2] rounded-full flex items-center justify-center text-white font-semibold flex-shrink-0 mt-0.5 cursor-pointer hover:opacity-90">
           {message.author.username[0].toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-baseline gap-2">
-            <span className="text-white font-medium hover:underline cursor-pointer">
-              {message.author.username}
-            </span>
-            <span className="text-[#949ba4] text-xs">
-              {new Date(message.timestamp).toLocaleString('zh-CN', {
-                month: 'numeric',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
+            <span className="text-white font-medium text-[15px] hover:underline cursor-pointer">{message.author.username}</span>
+            <span className="text-[#949ba4] text-[11px]">
+              {new Date(message.timestamp).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
           {renderMessageContent()}
         </div>
-        <div className="opacity-0 group-hover:opacity-100 flex items-start gap-1 transition-opacity">
-          <button
-            className="p-1 hover:bg-[#3f4147] rounded text-[#b5bac1] hover:text-white"
-            title="添加反应"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2" />
-              <circle cx="8.5" cy="10" r="1.5" />
-              <circle cx="15.5" cy="10" r="1.5" />
-              <path d="M8 14s1.5 2 4 2 4-2 4-2" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-            </svg>
+
+        {/* Hover action toolbar — floats top-right like Discord */}
+        <div className="absolute -top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity flex items-center bg-[#2b2d31] border border-[#3f4147] rounded-[4px] shadow-lg">
+          <button className="p-1.5 text-[#80848e] hover:text-white hover:bg-[#35373c] transition-colors rounded-l-[4px]" title="添加反应">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2"/><circle cx="8.5" cy="10" r="1.5"/><circle cx="15.5" cy="10" r="1.5"/><path d="M8 14s1.5 2 4 2 4-2 4-2" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/></svg>
           </button>
-          <button className="p-1 hover:bg-[#3f4147] rounded text-[#b5bac1] hover:text-white" title="更多">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-              <circle cx="12" cy="5" r="2" />
-              <circle cx="12" cy="12" r="2" />
-              <circle cx="12" cy="19" r="2" />
-            </svg>
+          <button className="p-1.5 text-[#80848e] hover:text-white hover:bg-[#35373c] transition-colors" title="编辑消息">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+          </button>
+          <button className="p-1.5 text-[#80848e] hover:text-white hover:bg-[#35373c] transition-colors" title="回复">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M10 9V5l-7 7 7 7v-4.1c5 0 8.5 1.6 11 5.1-1-5-4-10-11-11z"/></svg>
+          </button>
+          <button className="p-1.5 text-[#80848e] hover:text-[#f23f43] hover:bg-[#35373c] transition-colors rounded-r-[4px]" title="更多选项">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
           </button>
         </div>
       </div>
@@ -372,7 +362,7 @@ export function MessageItem({ message }: MessageItemProps) {
                 src={selectedImage}
                 alt="Full size"
                 className="max-w-full max-h-[90vh] w-auto h-auto object-contain rounded-lg shadow-2xl"
-                style={{ imageRendering: 'high-quality' }}
+                style={{ imageRendering: 'auto' }}
               />
             </div>
             

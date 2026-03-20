@@ -4,6 +4,7 @@ export interface Server {
   icon: string
   color: string
   banner?: string
+  ownerId?: string
 }
 
 export interface Channel {

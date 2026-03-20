@@ -146,7 +146,7 @@ function InviteContent({ pageState, guild, initial, errorMsg, code, onJoin, onGo
           该邀请链接可能已过期或已达到最大使用次数。<br />请向服务器管理员索取新的邀请链接。
         </p>
         <button
-          onClick={onGoHome}
+          onClick={() => onGoHome()}
           className="px-6 py-2.5 bg-[#5865f2] hover:bg-[#4752c4] text-white font-semibold rounded-lg transition-colors"
         >
           返回首页
@@ -162,7 +162,7 @@ function InviteContent({ pageState, guild, initial, errorMsg, code, onJoin, onGo
         <h2 className="text-white text-xl font-bold mb-2">加入失败</h2>
         <p className="text-[#f23f43] text-sm mb-6">{errorMsg}</p>
         <button
-          onClick={onGoHome}
+          onClick={() => onGoHome()}
           className="px-6 py-2.5 bg-[#5865f2] hover:bg-[#4752c4] text-white font-semibold rounded-lg transition-colors"
         >
           返回首页

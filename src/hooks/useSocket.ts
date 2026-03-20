@@ -32,7 +32,7 @@ interface BackendMessage {
 }
 
 export function useSocket() {
-  const { addMessage, addReceivedMessage, updateMessage, removeMessage, currentChannel, setMessages, currentServer, channels } = useServerStore()
+  const { addReceivedMessage, updateMessage, removeMessage, currentChannel, setMessages, currentServer, channels } = useServerStore()
   const user = useUserStore((state) => state.user)
   const isAuthenticated = useUserStore((state) => state.isAuthenticated)
   const userIdRef = useRef<string | null>(null)

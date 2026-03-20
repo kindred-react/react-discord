@@ -40,6 +40,10 @@ interface ServerState {
   previewInvite: (code: string) => Promise<{ guild: { id: string; name: string; icon: string | null; member_count: number } } | null>
   generateInvite: (guildId: string, token: string, maxUses?: number, expireHours?: number) => Promise<string | null>
   checkMembership: (guildId: string, token: string) => Promise<boolean>
+  leaveGuild: (guildId: string, token: string) => Promise<void>
+  deleteGuild: (guildId: string, token: string) => Promise<void>
+  createChannel: (guildId: string, name: string, type: 'text' | 'voice', token: string) => Promise<Channel>
+  deleteChannel: (channelId: string, token: string) => Promise<void>
 }
 
 const mockMessages: Message[] = [
@@ -98,12 +102,13 @@ export const useServerStore = create<ServerState>((set, get) => ({
       })
       if (response.ok) {
         const guilds = await response.json()
-        interface GuildData { id: string; name: string; icon: string | null }
+        interface GuildData { id: string; name: string; icon: string | null; owner_id: string }
         const servers: Server[] = (guilds as GuildData[]).map((g) => ({
           id: g.id,
           name: g.name,
           icon: g.icon || '',
           color: '#5865f2',
+          ownerId: g.owner_id,
         }))
         set({ 
           servers,
@@ -162,7 +167,7 @@ export const useServerStore = create<ServerState>((set, get) => ({
         const messages: Message[] = (backendMessages as Record<string, unknown>[]).map((msg) => ({
           id: msg.id as string,
           content: msg.content as string,
-          type: (msg.type as string) || 'text',
+          type: (msg.type as Message['type']) || 'text',
           voice_url: msg.voice_url as string | undefined,
           duration: msg.duration as number | undefined,
           attachments: (msg.attachments as Message['attachments']) || [],
@@ -172,7 +177,7 @@ export const useServerStore = create<ServerState>((set, get) => ({
             avatar: (msg.author as Record<string, string>).avatar || '',
             discriminator: (msg.author as Record<string, string>).discriminator || '0001',
           } : { id: 'unknown', username: 'Unknown', avatar: '', discriminator: '0000' },
-          timestamp: msg.created_at || msg.timestamp || new Date().toISOString(),
+          timestamp: (msg.created_at as string) || (msg.timestamp as string) || new Date().toISOString(),
         }))
         // 反转消息顺序，最新的在最下面
         messages.reverse()
@@ -209,7 +214,7 @@ export const useServerStore = create<ServerState>((set, get) => ({
         const newMessages: Message[] = (backendMessages as Record<string, unknown>[]).map((msg) => ({
           id: msg.id as string,
           content: msg.content as string,
-          type: (msg.type as string) || 'text',
+          type: (msg.type as Message['type']) || 'text',
           voice_url: msg.voice_url as string | undefined,
           duration: msg.duration as number | undefined,
           attachments: (msg.attachments as Message['attachments']) || [],
@@ -217,19 +222,24 @@ export const useServerStore = create<ServerState>((set, get) => ({
             id: (msg.author as Record<string, string>).id,
             username: (msg.author as Record<string, string>).username,
             avatar: (msg.author as Record<string, string>).avatar || '',
-            discriminator: msg.author.discriminator || '0001',
+            discriminator: (msg.author as Record<string, string>).discriminator || '0001',
           } : { id: 'unknown', username: 'Unknown', avatar: '', discriminator: '0000' },
-          timestamp: msg.created_at || msg.timestamp || new Date().toISOString(),
+          timestamp: (msg.created_at as string) || (msg.timestamp as string) || new Date().toISOString(),
         }))
         // 反转消息顺序
         newMessages.reverse()
         
-        set((state) => ({ 
-          messages: [...newMessages, ...state.messages],
-          messageOffset: state.messageOffset + newMessages.length,
-          hasMoreMessages: (state.messageOffset + newMessages.length) < total,
-          isLoadingMore: false 
-        }))
+        set((state) => { 
+          // 去重：过滤掉已存在的消息
+          const existingIds = new Set(state.messages.map((m) => m.id))
+          const uniqueNew = newMessages.filter((m) => !existingIds.has(m.id))
+          return {
+            messages: [...uniqueNew, ...state.messages],
+            messageOffset: state.messageOffset + newMessages.length,
+            hasMoreMessages: (state.messageOffset + newMessages.length) < total,
+            isLoadingMore: false,
+          }
+        })
       } else {
         set({ isLoadingMore: false, error: 'Failed to load more messages' })
       }
@@ -263,9 +273,11 @@ export const useServerStore = create<ServerState>((set, get) => ({
   },
 
   addReceivedMessage: (message: Message) => {
-    set((state) => ({
-      messages: [...state.messages, message],
-    }))
+    set((state) => {
+      // 去重：如果消息 id 已存在则跳过
+      if (state.messages.some((m) => m.id === message.id)) return state
+      return { messages: [...state.messages, message] }
+    })
   },
 
   updateMessage: (messageId, content) => {
@@ -379,6 +391,71 @@ export const useServerStore = create<ServerState>((set, get) => ({
     } catch {
       return false
     }
+  },
+
+  leaveGuild: async (guildId: string, token: string) => {
+    const response = await fetch(`${API_BASE}/guilds/${guildId}/leave`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({} as Record<string, string>))
+      throw new Error((err as Record<string, string>).error || '退出失败')
+    }
+    set((state) => ({
+      servers: state.servers.filter((s) => s.id !== guildId),
+      currentServer: state.currentServer?.id === guildId ? null : state.currentServer,
+      channels: state.currentServer?.id === guildId ? [] : state.channels,
+      currentChannel: state.currentServer?.id === guildId ? null : state.currentChannel,
+    }))
+  },
+
+  deleteGuild: async (guildId: string, token: string) => {
+    const response = await fetch(`${API_BASE}/guilds/${guildId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({} as Record<string, string>))
+      throw new Error((err as Record<string, string>).error || '删除失败')
+    }
+    set((state) => ({
+      servers: state.servers.filter((s) => s.id !== guildId),
+      currentServer: state.currentServer?.id === guildId ? null : state.currentServer,
+      channels: state.currentServer?.id === guildId ? [] : state.channels,
+      currentChannel: state.currentServer?.id === guildId ? null : state.currentChannel,
+    }))
+  },
+
+  createChannel: async (guildId: string, name: string, type: 'text' | 'voice', token: string) => {
+    const response = await fetch(`${API_BASE}/guilds/${guildId}/channels`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ name, type }),
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({} as Record<string, string>))
+      throw new Error((err as Record<string, string>).error || '创建失败')
+    }
+    const channel = await response.json() as { id: string; name: string; type: 'text' | 'voice' | 'category'; guild_id: string }
+    const newChannel: Channel = { id: channel.id, name: channel.name, type: channel.type, guildId: channel.guild_id }
+    set((state) => ({ channels: [...state.channels, newChannel] }))
+    return newChannel
+  },
+
+  deleteChannel: async (channelId: string, token: string) => {
+    const response = await fetch(`${API_BASE}/channels/${channelId}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({} as Record<string, string>))
+      throw new Error((err as Record<string, string>).error || '删除失败')
+    }
+    set((state) => ({
+      channels: state.channels.filter((c) => c.id !== channelId),
+      currentChannel: state.currentChannel?.id === channelId ? null : state.currentChannel,
+    }))
   },
 }))
 
