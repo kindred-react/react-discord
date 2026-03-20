@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useUserStore } from '../shared/stores/userStore'
 
 type RegisterError = '' | 'empty' | 'network' | 'server' | 'conflict_username' | 'conflict_email' | 'password_short' | 'invalid_email'
@@ -10,6 +10,8 @@ export function RegisterPage() {
   const isAuthenticated = useUserStore((state) => state.isAuthenticated)
   const startTokenVerification = useUserStore((state) => state.startTokenVerification)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const inviteCode = searchParams.get('invite')
 
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
@@ -20,9 +22,9 @@ export function RegisterPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/', { replace: true })
+      navigate(inviteCode ? `/invite/${inviteCode}` : '/', { replace: true })
     }
-  }, [isAuthenticated, navigate])
+  }, [isAuthenticated, navigate, inviteCode])
 
   const clearError = () => {
     if (errorType) {

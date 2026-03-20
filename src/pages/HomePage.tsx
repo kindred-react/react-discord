@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { Hash, Volume2, Headphones, Plus, Settings, Crown, Users, Compass, Pin, Download } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { Hash, Volume2, Headphones, Plus, Settings, Users, Compass, Pin, Download } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useUserStore } from '../shared/stores/userStore'
 import { useServerStore } from '../shared/stores/serverStore'
 import { type Server, type Channel } from '../shared/types'
@@ -15,6 +15,9 @@ import { StickerPicker } from '../components/StickerPicker'
 import { GiftPicker, type Gift } from '../components/GiftPicker'
 import { MessageItem } from '../components/MessageItem'
 import { LoadMoreMessages } from '../components/LoadMoreMessages'
+import { JoinServerModal } from '../components/JoinServerModal'
+import { CreateServerModal } from '../components/CreateServerModal'
+import { InviteModal } from '../components/InviteModal'
 import { useSocket } from '../hooks/useSocket'
 
 export function HomePage() {
@@ -22,6 +25,7 @@ export function HomePage() {
   const token = useUserStore((state) => state.token)
   const logout = useUserStore((state) => state.logout)
   const navigate = useNavigate()
+  const { guildId: urlGuildId, channelId: urlChannelId } = useParams<{ guildId?: string; channelId?: string }>()
   
   const { 
     servers,
@@ -45,6 +49,11 @@ export function HomePage() {
   const [showAddChannelModal, setShowAddChannelModal] = useState(false)
   const [showDownloadModal, setShowDownloadModal] = useState(false)
   const [showAddServerModal, setShowAddServerModal] = useState(false)
+  const [showJoinServerModal, setShowJoinServerModal] = useState(false)
+  const [showCreateServerModal, setShowCreateServerModal] = useState(false)
+  const [showInviteModal, setShowInviteModal] = useState(false)
+  const [showServerMenu, setShowServerMenu] = useState(false)
+  const serverMenuRef = useRef<HTMLDivElement>(null)
   const [activeVoiceChannel, setActiveVoiceChannel] = useState<Channel | null>(null)
   const [isUploadingVoice, setIsUploadingVoice] = useState(false)
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -57,9 +66,49 @@ export function HomePage() {
 
   const { sendMessage: sendSocketMessage } = useSocket()
 
+  // Close server dropdown on outside click
+  useEffect(() => {
+    if (!showServerMenu) return
+    const handler = (e: MouseEvent) => {
+      if (serverMenuRef.current && !serverMenuRef.current.contains(e.target as Node)) {
+        setShowServerMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showServerMenu])
+
+  // Load guilds on mount, then restore server/channel from URL
   useEffect(() => {
     if (user?.id && token) {
-      fetchGuilds(token)
+      fetchGuilds(token).then(() => {
+        const { servers } = useServerStore.getState()
+        if (servers.length === 0) return
+
+        // Pick server from URL or fall back to first
+        const targetServer = urlGuildId
+          ? servers.find((s) => s.id === urlGuildId) ?? servers[0]
+          : servers[0]
+
+        setCurrentServer(targetServer)
+        fetchChannels(targetServer.id, token).then(() => {
+          const { channels } = useServerStore.getState()
+          const textChannels = channels.filter((c) => c.type === 'text')
+          if (textChannels.length === 0) return
+
+          // Pick channel from URL or fall back to first text channel
+          const targetChannel = urlChannelId
+            ? textChannels.find((c) => c.id === urlChannelId) ?? textChannels[0]
+            : textChannels[0]
+
+          setCurrentChannel(targetChannel)
+          // Sync URL if not already correct
+          const correctPath = `/channels/${targetServer.id}/${targetChannel.id}`
+          if (window.location.pathname !== correctPath) {
+            navigate(correctPath, { replace: true })
+          }
+        })
+      })
     }
   }, [user?.id, token])
 
@@ -86,7 +135,17 @@ export function HomePage() {
   const handleServerClick = (server: Server) => {
     setCurrentServer(server)
     if (token) {
-      fetchChannels(server.id, token)
+      fetchChannels(server.id, token).then(() => {
+        const { channels } = useServerStore.getState()
+        const textChannels = channels.filter((c) => c.type === 'text')
+        if (textChannels.length > 0) {
+          const firstChannel = textChannels[0]
+          setCurrentChannel(firstChannel)
+          navigate(`/channels/${server.id}/${firstChannel.id}`)
+        } else {
+          navigate(`/channels/${server.id}`)
+        }
+      })
     }
   }
 
@@ -415,7 +474,7 @@ export function HomePage() {
 
           {/* Add Server */}
           <div className="flex items-center justify-center py-1">
-            <div 
+            <div
               onClick={() => setShowAddServerModal(true)}
               className="w-12 h-12 bg-[#36393f] rounded-full flex items-center justify-center text-[#23a559] cursor-pointer hover:rounded-[16px] hover:bg-[#23a559] hover:text-white transition-all"
             >
@@ -446,9 +505,53 @@ export function HomePage() {
 
       {/* Channel Sidebar */}
       <div className="w-60 bg-[#2f3136] flex flex-col">
-        <div className="h-12 px-4 flex items-center justify-between border-b border-[#202225] shadow-sm cursor-pointer hover:bg-[#36393f] transition-colors">
+        <div
+          ref={serverMenuRef}
+          className="relative h-12 px-4 flex items-center justify-between border-b border-[#202225] shadow-sm cursor-pointer hover:bg-[#36393f] transition-colors"
+          onClick={() => setShowServerMenu(!showServerMenu)}
+        >
           <h2 className="text-white font-semibold truncate">{currentServer?.name || 'Discord'}</h2>
-          <span className="text-[#8e9297]">▼</span>
+          <span className="text-[#8e9297] transition-transform" style={{ display: 'inline-block', transform: showServerMenu ? 'rotate(180deg)' : 'none' }}>▼</span>
+
+          {/* Server dropdown menu */}
+          {showServerMenu && currentServer && (
+            <div
+              className="absolute top-12 left-0 right-0 bg-[#111214] border border-[#3f4147] rounded-xl shadow-2xl z-50 p-1.5 mx-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => { setShowServerMenu(false); setShowInviteModal(true) }}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-[#00a8fc] hover:bg-[#5865f2] hover:text-white transition-colors text-sm font-medium group"
+              >
+                <span>邀请好友</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M14 2a5 5 0 015 5v1h2v2h-2v1a5 5 0 01-5 5H5a5 5 0 01-5-5V7a5 5 0 015-5h9zm0 2H5a3 3 0 00-3 3v4a3 3 0 003 3h9a3 3 0 003-3V7a3 3 0 00-3-3zm-4 2a3 3 0 110 6 3 3 0 010-6zm0 2a1 1 0 100 2 1 1 0 000-2zM21 6h2v2h-2V6zm0 4h2v2h-2v-2z"/>
+                </svg>
+              </button>
+
+              <div className="border-t border-[#3f4147] my-1" />
+
+              <button
+                onClick={() => { setShowServerMenu(false); setShowAddChannelModal(true) }}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-[#b5bac1] hover:bg-[#35373c] hover:text-white transition-colors text-sm"
+              >
+                <span>创建频道</span>
+                <span className="text-lg leading-none">+</span>
+              </button>
+
+              <div className="border-t border-[#3f4147] my-1" />
+
+              <button
+                onClick={() => { setShowServerMenu(false); handleLogout() }}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-[#f23f43] hover:bg-[#f23f43] hover:text-white transition-colors text-sm"
+              >
+                <span>退出服务器</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M16 13v-2H7V8l-5 4 5 4v-3z"/><path d="M20 3h-9a2 2 0 00-2 2v4h2V5h9v14h-9v-4H9v4a2 2 0 002 2h9a2 2 0 002-2V5a2 2 0 00-2-2z"/>
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
@@ -464,7 +567,12 @@ export function HomePage() {
             {textChannels.map((channel) => (
               <div
                 key={channel.id}
-                onClick={() => setCurrentChannel(channel)}
+                onClick={() => {
+                  setCurrentChannel(channel)
+                  if (currentServer) {
+                    navigate(`/channels/${currentServer.id}/${channel.id}`)
+                  }
+                }}
                 className={`flex items-center gap-2 px-2 py-1.5 mx-1 rounded cursor-pointer group ${
                   currentChannel?.id === channel.id ? 'bg-[#36393f] text-white' : 'hover:bg-[#36393f]'
                 }`}
@@ -770,23 +878,24 @@ export function HomePage() {
         />
       </Modal>
 
+      {/* 选择：创建还是加入 */}
       <Modal
         isOpen={showAddServerModal}
         onClose={() => setShowAddServerModal(false)}
-        title="创建服务器"
+        title="添加服务器"
       >
         <div className="p-4">
-          <p className="text-[#b5bac1] mb-4">通过创建一个新服务器来开始你的新社区。</p>
+          <p className="text-[#b5bac1] mb-4">你想加入一个已有服务器，还是创建一个全新的？</p>
           <div className="space-y-3">
-            <button 
-              onClick={() => setShowAddServerModal(false)}
+            <button
+              onClick={() => { setShowAddServerModal(false); setShowCreateServerModal(true) }}
               className="w-full p-3 bg-[#5865f2] hover:bg-[#4752c4] text-white rounded-lg transition-colors flex items-center gap-3"
             >
               <Plus size={20} />
-              <span>创建我的服务器</span>
+              <span>创建服务器</span>
             </button>
-            <button 
-              onClick={() => setShowAddServerModal(false)}
+            <button
+              onClick={() => { setShowAddServerModal(false); setShowJoinServerModal(true) }}
               className="w-full p-3 bg-[#4e5058] hover:bg-[#3f4147] text-white rounded-lg transition-colors flex items-center gap-3"
             >
               <Compass size={20} />
@@ -795,6 +904,34 @@ export function HomePage() {
           </div>
         </div>
       </Modal>
+
+      {showCreateServerModal && (
+        <CreateServerModal
+          onClose={() => setShowCreateServerModal(false)}
+          onCreated={(server) => {
+            setShowCreateServerModal(false)
+            if (token) fetchChannels(server.id, token)
+          }}
+        />
+      )}
+
+      {showJoinServerModal && (
+        <JoinServerModal
+          onClose={() => setShowJoinServerModal(false)}
+          onJoined={(serverId) => {
+            setShowJoinServerModal(false)
+            if (token) fetchChannels(serverId, token)
+          }}
+        />
+      )}
+
+      {showInviteModal && currentServer && (
+        <InviteModal
+          guildId={currentServer.id}
+          guildName={currentServer.name}
+          onClose={() => setShowInviteModal(false)}
+        />
+      )}
 
       <DownloadAppModal
         isOpen={showDownloadModal}

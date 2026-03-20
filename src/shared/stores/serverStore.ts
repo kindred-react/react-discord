@@ -35,6 +35,11 @@ interface ServerState {
   joinVoiceChannel: (channelId: string, user: User) => void
   leaveVoiceChannel: (userId: string) => void
   clearError: () => void
+  createGuild: (name: string, token: string) => Promise<Server | null>
+  joinGuildByInvite: (code: string, token: string) => Promise<{ guild: Server } | null>
+  previewInvite: (code: string) => Promise<{ guild: { id: string; name: string; icon: string | null; member_count: number } } | null>
+  generateInvite: (guildId: string, token: string, maxUses?: number, expireHours?: number) => Promise<string | null>
+  checkMembership: (guildId: string, token: string) => Promise<boolean>
 }
 
 const mockMessages: Message[] = [
@@ -102,12 +107,8 @@ export const useServerStore = create<ServerState>((set, get) => ({
         }))
         set({ 
           servers,
-          currentServer: servers[0] || null,
           isLoading: false 
         })
-        if (servers[0]) {
-          get().fetchChannels(servers[0].id, token)
-        }
       } else {
         set({ isLoading: false, error: 'Failed to fetch servers' })
       }
@@ -133,10 +134,8 @@ export const useServerStore = create<ServerState>((set, get) => ({
           type: c.type as Channel['type'],
           guildId: c.guild_id,
         }))
-        const textChannels = formattedChannels.filter((c) => c.type === 'text')
         set({ 
           channels: formattedChannels,
-          currentChannel: textChannels[0] || null,
           isLoading: false 
         })
       } else {
@@ -160,18 +159,18 @@ export const useServerStore = create<ServerState>((set, get) => ({
         const backendMessages = data.messages || data
         const total = data.total || 0
         
-        const messages: Message[] = (backendMessages as any[]).map((msg: any) => ({
-          id: msg.id,
-          content: msg.content,
-          type: msg.type || 'text',
-          voice_url: msg.voice_url,
-          duration: msg.duration,
-          attachments: msg.attachments || [],
+        const messages: Message[] = (backendMessages as Record<string, unknown>[]).map((msg) => ({
+          id: msg.id as string,
+          content: msg.content as string,
+          type: (msg.type as string) || 'text',
+          voice_url: msg.voice_url as string | undefined,
+          duration: msg.duration as number | undefined,
+          attachments: (msg.attachments as Message['attachments']) || [],
           author: msg.author ? {
-            id: msg.author.id,
-            username: msg.author.username,
-            avatar: msg.author.avatar || '',
-            discriminator: msg.author.discriminator || '0001',
+            id: (msg.author as Record<string, string>).id,
+            username: (msg.author as Record<string, string>).username,
+            avatar: (msg.author as Record<string, string>).avatar || '',
+            discriminator: (msg.author as Record<string, string>).discriminator || '0001',
           } : { id: 'unknown', username: 'Unknown', avatar: '', discriminator: '0000' },
           timestamp: msg.created_at || msg.timestamp || new Date().toISOString(),
         }))
@@ -207,17 +206,17 @@ export const useServerStore = create<ServerState>((set, get) => ({
         const backendMessages = data.messages || data
         const total = data.total || 0
         
-        const newMessages: Message[] = (backendMessages as any[]).map((msg: any) => ({
-          id: msg.id,
-          content: msg.content,
-          type: msg.type || 'text',
-          voice_url: msg.voice_url,
-          duration: msg.duration,
-          attachments: msg.attachments || [],
+        const newMessages: Message[] = (backendMessages as Record<string, unknown>[]).map((msg) => ({
+          id: msg.id as string,
+          content: msg.content as string,
+          type: (msg.type as string) || 'text',
+          voice_url: msg.voice_url as string | undefined,
+          duration: msg.duration as number | undefined,
+          attachments: (msg.attachments as Message['attachments']) || [],
           author: msg.author ? {
-            id: msg.author.id,
-            username: msg.author.username,
-            avatar: msg.author.avatar || '',
+            id: (msg.author as Record<string, string>).id,
+            username: (msg.author as Record<string, string>).username,
+            avatar: (msg.author as Record<string, string>).avatar || '',
             discriminator: msg.author.discriminator || '0001',
           } : { id: 'unknown', username: 'Unknown', avatar: '', discriminator: '0000' },
           timestamp: msg.created_at || msg.timestamp || new Date().toISOString(),
@@ -302,6 +301,85 @@ export const useServerStore = create<ServerState>((set, get) => ({
   },
 
   clearError: () => set({ error: null }),
+
+  createGuild: async (name: string, token: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/guilds`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ name }),
+      })
+      if (!response.ok) return null
+      const g = await response.json()
+      const server: Server = { id: g.id, name: g.name, icon: g.icon || '', color: '#5865f2' }
+      set((state) => ({ servers: [...state.servers, server] }))
+      return server
+    } catch {
+      return null
+    }
+  },
+
+  previewInvite: async (code: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/invites/${code.trim()}`)
+      if (!response.ok) return null
+      return await response.json()
+    } catch {
+      return null
+    }
+  },
+
+  joinGuildByInvite: async (code: string, token: string) => {
+    const response = await fetch(`${API_BASE}/invites/${code.trim()}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+    })
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({} as Record<string, string>))
+      throw new Error((err as Record<string, string>).error || '加入失败')
+    }
+    const data = await response.json()
+    const server: Server = {
+      id: data.guild.id,
+      name: data.guild.name,
+      icon: data.guild.icon || '',
+      color: '#5865f2',
+    }
+    set((state) => ({
+      servers: state.servers.find(s => s.id === server.id)
+        ? state.servers
+        : [...state.servers, server],
+    }))
+    return { guild: server }
+  },
+
+  generateInvite: async (guildId: string, token: string, maxUses = 0, expireHours = 24) => {
+    try {
+      const response = await fetch(`${API_BASE}/guilds/${guildId}/invites`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ max_uses: maxUses, expire_hours: expireHours }),
+      })
+      if (!response.ok) return null
+      const data = await response.json()
+      return data.code as string
+    } catch {
+      return null
+    }
+  },
+
+  checkMembership: async (guildId: string, token: string) => {
+    try {
+      const response = await fetch(`${API_BASE}/guilds`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+      })
+      if (!response.ok) return false
+      const guilds = await response.json() as Array<{ id: string }>
+      return guilds.some((g) => g.id === guildId)
+    } catch {
+      return false
+    }
+  },
 }))
 
 export { mockUsers }

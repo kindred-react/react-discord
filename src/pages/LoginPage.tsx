@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useUserStore, DEMO_USERS } from '../shared/stores/userStore'
 
 type LoginError = '' | 'empty' | 'network' | 'server' | 'invalid'
@@ -8,6 +8,9 @@ export function LoginPage() {
   const login = useUserStore((state) => state.login)
   const isAuthenticated = useUserStore((state) => state.isAuthenticated)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const inviteCode = searchParams.get('invite')
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -15,9 +18,9 @@ export function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/', { replace: true })
+      navigate(inviteCode ? `/invite/${inviteCode}` : '/', { replace: true })
     }
-  }, [isAuthenticated, navigate])
+  }, [isAuthenticated, navigate, inviteCode])
 
   const handleSelectUser = (index: number) => {
     const user = DEMO_USERS[index]
@@ -48,7 +51,7 @@ export function LoginPage() {
       const success = await login(email, password)
       setIsLoading(false)
       if (success) {
-        navigate('/')
+        navigate(inviteCode ? `/invite/${inviteCode}` : '/')
       } else {
         setErrorType('invalid')
       }
