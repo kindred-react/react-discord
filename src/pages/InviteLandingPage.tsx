@@ -27,20 +27,26 @@ export function InviteLandingPage() {
   const [guild, setGuild] = useState<GuildPreview | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
 
-  const load = async () => {
-    setPageState('loading')
-    const result = await previewInvite(code ?? '')
-    if (!result) { setPageState('invalid'); return }
-    setGuild(result.guild)
-    if (!isAuthenticated || !token) { setPageState('guest'); return }
-    const isMember = await checkMembership(result.guild.id, token)
-    setPageState(isMember ? 'member' : 'joinable')
-  }
-
   useEffect(() => {
-    load()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [code, isAuthenticated])
+    let active = true
+    const load = async () => {
+      try {
+        const result = await previewInvite(code ?? '')
+        if (!active) return
+        if (!result) { setPageState('invalid'); return }
+        setGuild(result.guild)
+        if (!isAuthenticated || !token) { setPageState('guest'); return }
+        const isMember = await checkMembership(result.guild.id, token)
+        if (active) setPageState(isMember ? 'member' : 'joinable')
+      } catch (error: unknown) {
+        if (!active) return
+        setErrorMsg(error instanceof Error ? error.message : '加载邀请失败')
+        setPageState('error')
+      }
+    }
+    void load()
+    return () => { active = false }
+  }, [checkMembership, code, isAuthenticated, previewInvite, token])
 
   const handleJoin = async () => {
     if (!token || !guild) return

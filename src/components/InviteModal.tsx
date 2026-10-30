@@ -34,7 +34,7 @@ export function InviteModal({ guildId, guildName, onClose }: Props) {
   const generateInvite = useServerStore((s) => s.generateInvite)
 
   const [code, setCode] = useState<string | null>(null)
-  const [isGenerating, setIsGenerating] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(true)
   const [copied, setCopied] = useState(false)
   const [expireHours, setExpireHours] = useState(24)
   const [maxUses, setMaxUses] = useState(0)
@@ -42,6 +42,7 @@ export function InviteModal({ guildId, guildName, onClose }: Props) {
   const settingsRef = useRef<HTMLDivElement>(null)
 
   const inviteLink = code ? `${window.location.origin}/invite/${code}` : ''
+  const initialOptions = useRef({ maxUses, expireHours })
 
   const generate = async () => {
     if (!token) return
@@ -53,8 +54,19 @@ export function InviteModal({ guildId, guildName, onClose }: Props) {
   }
 
   useEffect(() => {
-    generate()
-  }, [])
+    let active = true
+    const createInitialInvite = async () => {
+      if (!token) return
+      try {
+        const initialCode = await generateInvite(guildId, token, initialOptions.current.maxUses, initialOptions.current.expireHours)
+        if (active) setCode(initialCode)
+      } finally {
+        if (active) setIsGenerating(false)
+      }
+    }
+    void createInitialInvite()
+    return () => { active = false }
+  }, [generateInvite, guildId, token])
 
   // Close settings dropdown on outside click
   useEffect(() => {

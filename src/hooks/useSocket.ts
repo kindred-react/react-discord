@@ -92,10 +92,9 @@ export function useSocket() {
   useEffect(() => {
     const handleNewMessage = (data: unknown) => {
       console.log('[useSocket] Received message:new event, data:', data)
-      const msgData = data as any
-      
+      if (typeof data !== 'object' || data === null) return
       // 后端直接发送消息对象
-      const msg = msgData as BackendMessage
+      const msg = data as BackendMessage
       
       if (msg && msg.content) {
         console.log('[useSocket] Processing message from user:', msg.author_id, 'current user:', user?.id)

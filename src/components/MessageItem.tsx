@@ -126,7 +126,7 @@ export function MessageItem({ message }: MessageItemProps) {
 
   const renderMessageContent = () => {
     switch (message.type) {
-      case 'image':
+      case 'image': {
         const imageAttachment = message.attachments?.[0]
         const imageUrl = imageAttachment?.url || ''
         const width = imageAttachment?.width || 400
@@ -175,8 +175,9 @@ export function MessageItem({ message }: MessageItemProps) {
             )}
           </div>
         )
+      }
 
-      case 'file':
+      case 'file': {
         const fileAttachment = message.attachments?.[0]
         return (
           <div className="mt-2 bg-[#2b2d31] rounded-lg p-3 inline-flex items-center gap-3 max-w-md">
@@ -201,6 +202,7 @@ export function MessageItem({ message }: MessageItemProps) {
             </a>
           </div>
         )
+      }
 
       case 'voice':
         return (

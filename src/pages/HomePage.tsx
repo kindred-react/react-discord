@@ -163,7 +163,7 @@ export function HomePage() {
   const [showGifPicker, setShowGifPicker] = useState(false)
   const [showStickerPicker, setShowStickerPicker] = useState(false)
   const [showGiftPicker, setShowGiftPicker] = useState(false)
-  const [previousMessageCount, setPreviousMessageCount] = useState(0)
+  const previousMessageCount = useRef(0)
   const serverMenuRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
@@ -200,18 +200,18 @@ export function HomePage() {
   useEffect(() => {
     if (currentChannel && token) {
       fetchMessages(currentChannel.id, token)
-      setPreviousMessageCount(0)
+      previousMessageCount.current = 0
     }
   }, [currentChannel?.id, token])
 
   useEffect(() => {
-    if (messages.length > previousMessageCount) {
-      if (messages.length - previousMessageCount === 1) {
+    if (messages.length > previousMessageCount.current) {
+      if (messages.length - previousMessageCount.current === 1) {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
       }
-      setPreviousMessageCount(messages.length)
+      previousMessageCount.current = messages.length
     }
-  }, [messages, previousMessageCount])
+  }, [messages])
 
   const handleServerClick = (server: { id: string; name: string; icon: string; color: string; ownerId?: string }) => {
     setCurrentServer(server)

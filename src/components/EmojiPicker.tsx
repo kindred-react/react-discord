@@ -104,7 +104,7 @@ export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
           {Object.entries(emojiCategories).map(([key, category]) => (
             <button
               key={key}
-              onClick={() => setActiveCategory(key as any)}
+              onClick={() => setActiveCategory(key as 'smileys' | 'people' | 'nature' | 'food' | 'activities' | 'travel' | 'objects' | 'symbols')}
               className={`text-2xl p-2 rounded transition-colors flex-shrink-0 ${
                 activeCategory === key
                   ? 'bg-[#5865f2]'
